@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四邊形邊邊命名遊戲</title>
+    <style>
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center content vertically */
+            min-height: 95vh; /* Use min-height to allow scrolling if content overflows */
+            margin: 0;
+            background: linear-gradient(135deg, #FFD700, #FFA07A, #ADD8E6); /* Gold, LightSalmon, LightBlue */
+            color: #333;
+            text-align: center;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 550px; /* Max width for the game box */
+        }
+        h1 {
+            color: #FF6347; /* Tomato color */
+            margin-bottom: 20px;
+        }
+        #shapeCanvas {
+            border: 3px solid #4682B4; /* SteelBlue */
+            border-radius: 10px;
+            background-color: #FFFACD; /* LemonChiffon */
+            margin-bottom: 20px;
+            cursor: pointer;
+            max-width: 100%; /* Ensure canvas is responsive */
+            height: auto;   /* Ensure canvas maintains aspect ratio */
+        }
+        #questionArea, #timerArea, #feedbackArea {
+            margin-bottom: 15px;
+            font-size: 1.3em; /* Larger text */
+            font-weight: bold;
+        }
+        #questionArea { color: #2E8B57; /* SeaGreen */ }
+        #timerArea { color: #DC143C; /* Crimson */ }
+        #feedbackArea { min-height: 50px; /* Reserve space for feedback */ }
+        .feedback-correct { color: #32CD32; /* LimeGreen */ }
+        .feedback-incorrect { color: #FF4500; /* OrangeRed */ }
+        .feedback-encourage { color: #1E90FF; /* DodgerBlue */ }
+        button {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049; /* Darker Green */
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        /* Style for vertex labels */
+        .vertex-label {
+            position: absolute; /* We'll position these with JS relative to canvas */
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #800080; /* Purple */
+            pointer-events: none; /* Labels should not interfere with clicks */
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        /* Media query for smaller screens */
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.8em; }
+            #questionArea, #timerArea, #feedbackArea { font-size: 1.1em; }
+            button { padding: 10px 20px; font-size: 0.9em; }
+            .vertex-label { font-size: 1em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>四邊形邊邊學習</h1>
+        <p>小博士，準備好挑戰了嗎？請點出正確的邊吧！</p>
+
+        <canvas id="shapeCanvas" width="400" height="300"></canvas> <div id="labelsContainer" style="position: relative; width: 400px; height: 0; margin: auto;"></div>
+
+
+        <div id="questionArea">題目會出現在這裡</div>
+        <div id="timerArea">⏳ 5</div>
+        <div id="feedbackArea"></div>
+
+        <button id="nextButton">下一題</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

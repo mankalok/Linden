@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四邊形學習遊戲</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF6B6B',
+            secondary: '#4ECDC4',
+            accent: '#FFD166',
+            happy: '#6A0572',
+            playful: '#9775fa',
+            joyful: '#33d9b2'
+          },
+        },
+      },
+      darkMode: 'class',
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+      touch-action: manipulation;
+      background-image: radial-gradient(#fff8e8 1px, transparent 1px), radial-gradient(#fff8e8 1px, transparent 1px);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+    }
+    
+    /* 深色模式 */
+    .dark {
+      color-scheme: dark;
+    }
+    
+    .dark body {
+      background-color: #1e1e2e;
+      color: #fff;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    }
+    
+    .bounce {
+      animation: bounce 0.5s;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .wiggle {
+      animation: wiggle 1s ease-in-out;
+    }
+    
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-5deg); }
+      75% { transform: rotate(5deg); }
+    }
+    
+    .float {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    
+    /* SVG 邊緣的懸停效果 */
+    .edge:hover {
+      stroke-width: 8;
+      cursor: pointer;
+      filter: drop-shadow(0 0 4px rgba(255, 107, 107, 0.6));
+      transition: all 0.2s ease;
+    }
+    
+    .rainbow-text {
+      background-image: linear-gradient(90deg, #FF6B6B, #FFD166, #4ECDC4, #9775fa, #33d9b2);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: rainbow 8s ease infinite;
+      background-size: 400% 100%;
+    }
+    
+    @keyframes rainbow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .btn-hover-effect:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-6 bg-white dark:bg-gray-900 min-h-screen">
+  <!-- 檢測暗模式 -->
+  <script>
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+      if (event.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+  </script>
+
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-3xl md:text-4xl font-bold text-center rainbow-text mb-2">✨ 四邊形學習遊戲 ✨</h1>
+    <p class="text-center text-secondary dark:text-secondary mb-4 float">讓我們一起學習四邊形的邊吧！👧👦</p>
+    
+    <!-- 遊戲模式選擇 -->
+    <div class="flex justify-center gap-4 mb-6">
+      <button id="oppositeEdgeBtn" class="btn-hover-effect py-3 px-6 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transform transition duration-300">🔄 找對邊</button>
+      <button id="adjacentEdgeBtn" class="btn-hover-effect py-3 px-6 rounded-full bg-accent dark:bg-accent text-white text-lg font-bold hover:bg-yellow-500 dark:hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 transform transition duration-300">👭 找鄰邊</button>
+    </div>
+    
+    <!-- 遊戲說明 -->
+    <div id="gameInstruction" class="text-lg text-center mb-4 text-happy dark:text-playful font-medium">
+      🔍 在每個四邊形中，找出鄰邊（共用一個頂點的兩條邊）
+    </div>
+    
+    <!-- 四邊形顯示區域 -->
+    <div id="quadrilateralContainer" class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 shadow-lg border-2 border-accent dark:border-secondary">
+      <div id="quadrilateralsGrid" class="grid gap-4 w-full h-full">
+        <div class="flex items-center justify-center">
+          <svg id="quadrilateralSvg0" class="quadrilateralSvg" width="100%" height="100%" viewBox="0 0 300 300"></svg>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 反饋信息 -->
+    <div id="feedback" class="text-lg text-center mb-6 min-h-16 text-gray-700 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      👆 請點選四邊形的一條邊開始遊戲！
+    </div>
+    
+    <!-- 控制按鈕 -->
+    <div class="flex justify-center">
+      <button id="nextBtn" class="btn-hover-effect py-3 px-6 rounded-full bg-primary dark:bg-primary text-white text-xl font-bold hover:bg-red-500 dark:hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 transform transition duration-300 pulse">🎮 下一個四邊形</button>
+    </div>
+    
+    <!-- 底部裝飾 -->
+    <div class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+      <p>❤️ 學習數學真有趣 ❤️</p>
+    </div>
+  </div>
+
+  <script>
+    // 遊戲狀態
+    const gameState = {
+      mode: 'adjacent', // 'opposite' 或 'adjacent'
+      selectedEdgeIndex: null,
+      selectedQuadIndex: null,
+      quadrilateral: null,
+      edgeColors: ['#FF6B6B', '#4ECDC4', '#FFD166', '#6A0572', '#9775fa', '#33d9b2'],
+      currentColorIndex: 0,
+      // 每個四邊形的配對狀態
+      quadrilaterals: [
+        { correctPairs: [] },
+        { correctPairs: [] },
+        { correctPairs: [] },
+        { correctPairs: [] }
+      ],
+      // 總共完成的配對數
+      totalCompletedPairs: 0,
+      // 需要完成的總配對數
+      totalRequiredPairs: 4
+    };
+    
+    // DOM 元素引用
+    const quadrilateralsGrid = document.getElementById('quadrilateralsGrid');
+    const feedbackEl = document.getElementById('feedback');
+    const oppositeEdgeBtn = document.getElementById('oppositeEdgeBtn');
+    const adjacentEdgeBtn = document.getElementById('adjacentEdgeBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const gameInstruction = document.getElementById('gameInstruction');
+    
+    // 點擊模式按鈕
+    oppositeEdgeBtn.addEventListener('click', () => {
+      setGameMode('opposite');
+    });
+    
+    adjacentEdgeBtn.addEventListener('click', () => {
+      setGameMode('adjacent');
+    });
+    
+    // 點擊下一個按鈕
+    nextBtn.addEventListener('click', () => {
+      gameState.selectedEdgeIndex = null;
+      gameState.selectedQuadIndex = null;
+      gameState.totalCompletedPairs = 0;
+      
+      // 重置所有四邊形的配對狀態
+      gameState.quadrilaterals = gameState.quadrilaterals.map(() => ({ correctPairs: [] }));
+      
+      // 重建所有四邊形
+      createQuadrilaterals();
+      
+      feedbackEl.textContent = '請點選四邊形的一條邊開始遊戲！';
+      feedbackEl.className = 'text-lg text-center mb-6 min-h-16 text-gray-700 dark:text-gray-300';
+    });
+    
+    // 設置遊戲模式
+    function setGameMode(mode) {
+      gameState.mode = mode;
+      gameState.totalCompletedPairs = 0;
+      
+      if (mode === 'opposite') {
+        oppositeEdgeBtn.classList.add('bg-primary', 'dark:bg-indigo-600');
+        oppositeEdgeBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800');
+        oppositeEdgeBtn.classList.add('text-white');
+        
+        adjacentEdgeBtn.classList.remove('bg-primary', 'dark:bg-indigo-600');
+        adjacentEdgeBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800');
+        adjacentEdgeBtn.classList.remove('text-white');
+        
+        gameInstruction.textContent = '在每個四邊形中，找出對邊（相對、不共用頂點的兩條邊）';
+        
+        // 對邊模式：顯示2個四邊形（因為有2對對邊）
+        gameState.totalRequiredPairs = 2;
+        gameState.quadrilaterals = Array(2).fill().map(() => ({ correctPairs: [] }));
+        
+        // 設置網格為 1x2 (一行兩個四邊形)
+        quadrilateralsGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 w-full';
+      } else {
+        adjacentEdgeBtn.classList.add('bg-primary', 'dark:bg-indigo-600');
+        adjacentEdgeBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800');
+        adjacentEdgeBtn.classList.add('text-white');
+        
+        oppositeEdgeBtn.classList.remove('bg-primary', 'dark:bg-indigo-600');
+        oppositeEdgeBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800');
+        oppositeEdgeBtn.classList.remove('text-white');
+        
+        gameInstruction.textContent = '在每個四邊形中，找出鄰邊（共用一個頂點的兩條邊）';
+        
+        // 鄰邊模式：顯示4個四邊形（因為有4對鄰邊）
+        gameState.totalRequiredPairs = 4;
+        gameState.quadrilaterals = Array(4).fill().map(() => ({ correctPairs: [] }));
+        
+        // 設置網格為 2x2 (兩行兩個四邊形)
+        quadrilateralsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 w-full';
+      }
+      
+      // 重置游戏状态
+      gameState.selectedEdgeIndex = null;
+      gameState.selectedQuadIndex = null;
+      feedbackEl.textContent = '請點選四邊形的一條邊開始遊戲！';
+      feedbackEl.className = 'text-lg text-center mb-6 min-h-16 text-gray-700 dark:text-gray-300';
+      
+      // 重建四邊形容器
+      createQuadrilaterals();
+    }
+    
+    // 創建所有四邊形
+    function createQuadrilaterals() {
+      // 清空四邊形網格
+      quadrilateralsGrid.innerHTML = '';
+      
+      // 隨機選擇一種四邊形類型，所有四邊形使用相同類型
+      const types = ['square', 'rectangle', 'parallelogram', 'trapezoid', 'rhombus'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      
+      // 創建所需數量的四邊形
+      const numQuadrilaterals = gameState.quadrilaterals.length;
+      
+      // 先生成一個四邊形的點，以便複製到所有實例
+      let sharedPoints = generateQuadrilateralPoints(type);
+      
+      // 保存共享的四邊形坐標到遊戲狀態
+      gameState.sharedPoints = sharedPoints;
+      
+      // 為每個四邊形創建一個SVG容器
+      for (let q = 0; q < numQuadrilaterals; q++) {
+        const quadContainer = document.createElement('div');
+        quadContainer.className = 'flex items-center justify-center bg-white dark:bg-gray-800 rounded-lg p-2 aspect-square';
+        quadContainer.style.height = gameState.mode === 'opposite' ? '280px' : '240px';
+        
+        const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgElement.id = `quadrilateralSvg${q}`;
+        svgElement.className = 'quadrilateralSvg';
+        svgElement.setAttribute('width', '100%');
+        svgElement.setAttribute('height', '100%');
+        svgElement.setAttribute('viewBox', '0 0 300 300');
+        
+        quadContainer.appendChild(svgElement);
+        quadrilateralsGrid.appendChild(quadContainer);
+        
+        // 創建四邊形 - 使用共享的點
+        createSingleQuadrilateral(svgElement, type, q, sharedPoints);
+      }
+      
+      // 保存四邊形類型
+      gameState.quadrilateralType = type;
+    }
+    
+    // 生成四邊形的點
+    function generateQuadrilateralPoints(type) {
+      let points = [];
+      
+      // 中心點和相對尺寸
+      const centerX = 150;
+      const centerY = 150;
+      const size = 100;
+      
+      // 根據類型生成點
+      switch (type) {
+        case 'square':
+          points = [
+            [centerX - size/2, centerY - size/2],
+            [centerX + size/2, centerY - size/2],
+            [centerX + size/2, centerY + size/2],
+            [centerX - size/2, centerY + size/2]
+          ];
+          break;
+          
+        case 'rectangle':
+          const width = size * 1.5;
+          const height = size * 0.8;
+          points = [
+            [centerX - width/2, centerY - height/2],
+            [centerX + width/2, centerY - height/2],
+            [centerX + width/2, centerY + height/2],
+            [centerX - width/2, centerY + height/2]
+          ];
+          break;
+          
+        case 'parallelogram':
+          const offset = size * 0.5;
+          points = [
+            [centerX - size/2 + offset, centerY - size/2],
+            [centerX + size/2 + offset, centerY - size/2],
+            [centerX + size/2 - offset, centerY + size/2],
+            [centerX - size/2 - offset, centerY + size/2]
+          ];
+          break;
+          
+        case 'trapezoid':
+          const topWidth = size * 0.6;
+          const bottomWidth = size * 1.2;
+          points = [
+            [centerX - topWidth/2, centerY - size/2],
+            [centerX + topWidth/2, centerY - size/2],
+            [centerX + bottomWidth/2, centerY + size/2],
+            [centerX - bottomWidth/2, centerY + size/2]
+          ];
+          break;
+          
+        case 'rhombus':
+          // 創建菱形，所有邊長相等但角不是直角
+          const horizontalOffset = size * 0.6;
+          const verticalOffset = size * 0.8;
+          
+          points = [
+            [centerX, centerY - verticalOffset], // 頂點
+            [centerX + horizontalOffset, centerY], // 右點
+            [centerX, centerY + verticalOffset], // 底點
+            [centerX - horizontalOffset, centerY] // 左點
+          ];
+          break;
+      }
+      
+      return points;
+    }
+    
+    // 創建單個四邊形
+    function createSingleQuadrilateral(svgElement, type, quadIndex, sharedPoints) {
+      // 使用共享的點，確保所有四邊形完全相同
+      const points = sharedPoints;
+      
+      // 繪製四邊形
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      const pointsStr = points.map(p => p.join(',')).join(' ');
+      polygon.setAttribute('points', pointsStr);
+      polygon.setAttribute('fill', 'none');
+      polygon.setAttribute('stroke', '#aaa');
+      polygon.setAttribute('stroke-width', '2');
+      svgElement.appendChild(polygon);
+      
+      // 繪製邊
+      for (let i = 0; i < 4; i++) {
+        const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        edge.setAttribute('x1', points[i][0]);
+        edge.setAttribute('y1', points[i][1]);
+        edge.setAttribute('x2', points[(i + 1) % 4][0]);
+        edge.setAttribute('y2', points[(i + 1) % 4][1]);
+        edge.setAttribute('stroke', '#333');
+        edge.setAttribute('stroke-width', '4');
+        edge.setAttribute('class', 'edge');
+        edge.setAttribute('data-index', i);
+        edge.setAttribute('data-quad-index', quadIndex);
+        edge.addEventListener('click', handleEdgeClick);
+        svgElement.appendChild(edge);
+      }
+      
+      // 添加四邊形類型說明和序號
+      const typeNames = {
+        square: '正方形',
+        rectangle: '長方形',
+        parallelogram: '平行四邊形',
+        trapezoid: '梯形',
+        rhombus: '菱形'
+      };
+      
+      const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      typeText.setAttribute('x', '20');
+      typeText.setAttribute('y', '30');
+      typeText.setAttribute('fill', 'currentColor');
+      typeText.setAttribute('class', 'text-lg font-bold');
+      typeText.textContent = `${typeNames[type]} #${quadIndex+1}`;
+      svgElement.appendChild(typeText);
+      
+      // 如果這是對邊模式，添加提示標籤
+      if (gameState.mode === 'opposite') {
+        const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        infoText.setAttribute('x', '150');
+        infoText.setAttribute('y', '280');
+        infoText.setAttribute('text-anchor', 'middle');
+        infoText.setAttribute('fill', 'currentColor');
+        infoText.setAttribute('class', 'text-sm');
+        infoText.textContent = `找出第${quadIndex + 1}對對邊`;
+        svgElement.appendChild(infoText);
+      } else {
+        const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        infoText.setAttribute('x', '150');
+        infoText.setAttribute('y', '280');
+        infoText.setAttribute('text-anchor', 'middle');
+        infoText.setAttribute('fill', 'currentColor');
+        infoText.setAttribute('class', 'text-sm');
+        infoText.textContent = `找出第${quadIndex + 1}對鄰邊`;
+        svgElement.appendChild(infoText);
+      }
+    }
+    
+    // 旋转点
+    function rotatePoints(points, centerX, centerY, angle) {
+      const rad = (angle * Math.PI) / 180;
+      return points.map(p => {
+        const x = p[0] - centerX;
+        const y = p[1] - centerY;
+        return [
+          centerX + x * Math.cos(rad) - y * Math.sin(rad),
+          centerY + x * Math.sin(rad) + y * Math.cos(rad)
+        ];
+      });
+    }
+    
+    // 處理邊的點擊
+    function handleEdgeClick(event) {
+      const edge = event.target;
+      const edgeIndex = parseInt(edge.getAttribute('data-index'));
+      const quadIndex = parseInt(edge.getAttribute('data-quad-index'));
+      
+      // 檢查這條邊是否已經被配對
+      for (const pair of gameState.quadrilaterals[quadIndex].correctPairs) {
+        if (pair.includes(edgeIndex)) {
+          feedbackEl.textContent = '這條邊已經被選過了，請選擇另一條邊。';
+          return;
+        }
+      }
+      
+      // 如果有選中的邊，但是四邊形索引不同，則重置選擇
+      if (gameState.selectedEdgeIndex !== null && gameState.selectedQuadIndex !== quadIndex) {
+        // 找到之前選中的邊
+        const prevSelectedEdge = document.querySelector(`line[data-index="${gameState.selectedEdgeIndex}"][data-quad-index="${gameState.selectedQuadIndex}"]`);
+        if (prevSelectedEdge && !isEdgeInCorrectPair(gameState.selectedEdgeIndex, gameState.selectedQuadIndex)) {
+          prevSelectedEdge.setAttribute('stroke', '#333');
+          prevSelectedEdge.setAttribute('stroke-width', '4');
+        }
+        gameState.selectedEdgeIndex = null;
+        gameState.selectedQuadIndex = null;
+      }
+      
+      // 如果沒有選中邊，保存當前選中邊
+      if (gameState.selectedEdgeIndex === null) {
+        gameState.selectedEdgeIndex = edgeIndex;
+        gameState.selectedQuadIndex = quadIndex;
+        edge.setAttribute('stroke', gameState.edgeColors[gameState.currentColorIndex]);
+        edge.setAttribute('stroke-width', '6');
+        feedbackEl.textContent = '👀 好的！現在請選擇' + 
+          (gameState.mode === 'opposite' ? '對邊 🔄' : '鄰邊 👭') + '。';
+        feedbackEl.classList.add('text-primary', 'dark:text-accent');
+      } else {
+        // 檢查是否是同一條邊
+        if (gameState.selectedEdgeIndex === edgeIndex && gameState.selectedQuadIndex === quadIndex) {
+          feedbackEl.textContent = '😅 你選了同一條邊，請選擇不同的邊。';
+          feedbackEl.classList.add('text-orange-500', 'dark:text-orange-400');
+          return;
+        }
+        
+        // 檢查是否為對邊或鄰邊
+        let correct = false;
+        
+        if (gameState.mode === 'opposite') {
+          // 對邊: 索引差為2或-2
+          const diff = Math.abs(gameState.selectedEdgeIndex - edgeIndex);
+          correct = diff === 2;
+        } else {
+          // 鄰邊: 索引差為1或3（0和3是鄰邊）
+          const diff = Math.abs(gameState.selectedEdgeIndex - edgeIndex);
+          correct = diff === 1 || diff === 3;
+        }
+        
+        if (correct) {
+          // 檢查這對邊是否已經在其他四邊形中被找到過
+          const edgePair = [Math.min(gameState.selectedEdgeIndex, edgeIndex), Math.max(gameState.selectedEdgeIndex, edgeIndex)];
+          let pairAlreadyFound = false;
+          
+          // 遍歷所有已配對的四邊形
+          for (let i = 0; i < gameState.quadrilaterals.length; i++) {
+            if (i === quadIndex) continue; // 跳過當前四邊形
+            
+            // 檢查每個已配對
+            for (const pair of gameState.quadrilaterals[i].correctPairs) {
+              const existingPair = [Math.min(pair[0], pair[1]), Math.max(pair[0], pair[1])];
+              if (existingPair[0] === edgePair[0] && existingPair[1] === edgePair[1]) {
+                pairAlreadyFound = true;
+                break;
+              }
+            }
+            
+            if (pairAlreadyFound) break;
+          }
+          
+          if (pairAlreadyFound) {
+            // 這對邊已經在其他四邊形中被找到過，提示用戶找不同的邊
+            feedbackEl.textContent = '這對' + (gameState.mode === 'opposite' ? '對邊' : '鄰邊') + 
+              '已經在另一個四邊形中被找到過了，請找出不同的邊對！';
+            feedbackEl.classList.add('text-blue-600', 'dark:text-blue-400');
+            
+            // 重置選中的邊
+            const prevSelectedEdge = document.querySelector(`line[data-index="${gameState.selectedEdgeIndex}"][data-quad-index="${gameState.selectedQuadIndex}"]`);
+            if (prevSelectedEdge && !isEdgeInCorrectPair(gameState.selectedEdgeIndex, gameState.selectedQuadIndex)) {
+              prevSelectedEdge.setAttribute('stroke', '#333');
+              prevSelectedEdge.setAttribute('stroke-width', '4');
+            }
+            edge.setAttribute('stroke', '#333');
+            edge.setAttribute('stroke-width', '4');
+            
+            // 重置選中的邊索引
+            gameState.selectedEdgeIndex = null;
+            gameState.selectedQuadIndex = null;
+            
+            return;
+          }
+          
+          // 答對了而且是新的配對
+          edge.setAttribute('stroke', gameState.edgeColors[gameState.currentColorIndex]);
+          edge.setAttribute('stroke-width', '6');
+          
+          // 保存這對正確匹配
+          gameState.quadrilaterals[quadIndex].correctPairs.push([gameState.selectedEdgeIndex, edgeIndex]);
+          
+          // 增加總完成配對數
+          gameState.totalCompletedPairs++;
+          
+          // 準備下一對的顏色
+          gameState.currentColorIndex = (gameState.currentColorIndex + 1) % gameState.edgeColors.length;
+          
+          // 準備獎勵表情符號
+          const rewardEmojis = ['🎉', '👍', '🌟', '😊', '🏆', '💯', '🧠', '👏', '🤩', '💪'];
+          const randomEmoji = rewardEmojis[Math.floor(Math.random() * rewardEmojis.length)];
+          
+          // 反饋
+          feedbackEl.textContent = `${randomEmoji} 太棒了！你找到了正確的` + 
+            (gameState.mode === 'opposite' ? '對邊' : '鄰邊') + '！' + `${randomEmoji}`;
+          feedbackEl.classList.add('text-green-600', 'dark:text-green-400', 'font-bold', 'bounce');
+          setTimeout(() => {
+            feedbackEl.classList.remove('bounce');
+          }, 500);
+          
+          // 檢查是否全部找完
+          if (gameState.totalCompletedPairs === gameState.totalRequiredPairs) {
+            setTimeout(() => {
+              feedbackEl.innerHTML = '🎊🎊 恭喜你！🎊🎊<br>已找出所有' + gameState.totalRequiredPairs + '對' + 
+                (gameState.mode === 'opposite' ? '對邊' : '鄰邊') + '。<br>點擊「下一個四邊形」繼續！';
+              feedbackEl.classList.add('wiggle');
+              nextBtn.classList.add('animate-bounce');
+              setTimeout(() => {
+                nextBtn.classList.remove('animate-bounce');
+                feedbackEl.classList.remove('wiggle');
+              }, 1000);
+            }, 1000);
+          } else {
+            // 還沒完成全部配對，指示用戶下一步操作
+            setTimeout(() => {
+              feedbackEl.textContent = `🔥 太好了！你已完成 ${gameState.totalCompletedPairs}/${gameState.totalRequiredPairs} 對配對。繼續找下一對吧！ ⏩`;
+            }, 1500);
+          }
+        } else {
+          // 答錯了
+          let explanationText = '';
+          
+          if (gameState.mode === 'opposite') {
+            explanationText = '對邊是指四邊形中相對的兩條邊，它們不共用頂點。';
+          } else {
+            explanationText = '鄰邊是指四邊形中共用一個頂點的兩條邊。';
+          }
+          
+          const encourageEmojis = ['🤔', '😊', '💪', '✨', '👀'];
+          const randomEncourageEmoji = encourageEmojis[Math.floor(Math.random() * encourageEmojis.length)];
+          
+          feedbackEl.textContent = `${randomEncourageEmoji} 不太對喔，但別灰心！` + explanationText + `再試一次吧！${randomEncourageEmoji}`;
+          feedbackEl.classList.add('text-orange-500', 'dark:text-orange-400', 'wiggle');
+          
+          // 重置選中的邊
+          const prevSelectedEdge = document.querySelector(`line[data-index="${gameState.selectedEdgeIndex}"][data-quad-index="${gameState.selectedQuadIndex}"]`);
+          if (prevSelectedEdge && !isEdgeInCorrectPair(gameState.selectedEdgeIndex, gameState.selectedQuadIndex)) {
+            prevSelectedEdge.setAttribute('stroke', '#333');
+            prevSelectedEdge.setAttribute('stroke-width', '4');
+          }
+        }
+        
+        // 重置選中的邊索引
+        gameState.selectedEdgeIndex = null;
+        gameState.selectedQuadIndex = null;
+      }
+    }
+    
+    // 檢查邊是否已在正確配對中
+    function isEdgeInCorrectPair(edgeIndex, quadIndex) {
+      for (const pair of gameState.quadrilaterals[quadIndex].correctPairs) {
+        if (pair.includes(edgeIndex)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    // 初始化游戏
+    // 確保初始設置正確的網格佈局
+    if (gameState.mode === 'opposite') {
+      quadrilateralsGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 w-full';
+    } else {
+      quadrilateralsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 w-full';
+    }
+    createQuadrilaterals();
+  </script>
+</body>
+</html>
