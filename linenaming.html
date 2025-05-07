@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四邊形學習遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#7868E6', // 更柔和的紫色
+                        secondary: '#FFCF96', // 溫暖的橘色
+                        success: '#5CB85C', // 快樂的綠色
+                        error: '#FF7D7D', // 柔和的紅色
+                        happy: '#FFE15D', // 愉悅的黃色
+                    }
+                }
+            }
+        }
+
+        // 檢測暗黑模式
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+    <style>
+        /* 確保反饋信息顯示在最頂層 */
+        #feedback {
+            z-index: 50;
+        }
+        
+        /* 增加動畫效果 */
+        .highlight-animation {
+            animation: pulse 1s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
+        
+        /* 按鈕點擊效果 */
+        .button-press {
+            transform: scale(0.95);
+            transition: transform 0.1s;
+        }
+        
+        /* 愉快的背景紋理 */
+        .happy-bg {
+            background-image: radial-gradient(#F9F9F9 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .dark .happy-bg {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* 彩虹邊框效果 */
+        @keyframes rainbow-border {
+            0% { box-shadow: 0 0 0 3px rgba(255, 207, 150, 0.5); }
+            25% { box-shadow: 0 0 0 3px rgba(120, 104, 230, 0.5); }
+            50% { box-shadow: 0 0 0 3px rgba(92, 184, 92, 0.5); }
+            75% { box-shadow: 0 0 0 3px rgba(255, 125, 125, 0.5); }
+            100% { box-shadow: 0 0 0 3px rgba(255, 207, 150, 0.5); }
+        }
+        
+        .rainbow-glow {
+            animation: rainbow-border 3s infinite;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-primary dark:text-secondary mb-2">
+            <span class="inline-block animate-bounce mr-2">🎮</span> 
+            四邊形學習遊戲
+            <span class="inline-block animate-bounce ml-2">🎯</span>
+        </h1>
+        <p class="text-center text-gray-600 dark:text-gray-300 mb-6">快樂學習四邊形中邊的命名吧！</p>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden p-4 md:p-6 mb-6 rainbow-glow transition-all duration-300">
+            <!-- 遊戲控制區 -->
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                <div class="flex mb-4 md:mb-0">
+                    <button id="startBtn" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full mr-3 transform transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md">
+                        <span class="mr-2">🚀</span> 開始遊戲
+                    </button>
+                    <button id="nextBtn" class="bg-secondary hover:bg-secondary/90 text-gray-700 font-bold py-2 px-6 rounded-full transform transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md" disabled>
+                        <span class="mr-2">👉</span> 下一題
+                    </button>
+                </div>
+                <div class="flex items-center bg-gray-100 dark:bg-gray-700 py-2 px-4 rounded-full">
+                    <span class="text-gray-700 dark:text-gray-200 mr-2">得分：</span>
+                    <span id="score" class="text-xl font-bold text-primary">0</span>
+                    <span class="ml-2">🏆</span>
+                </div>
+            </div>
+            
+            <!-- 遊戲區域 -->
+            <div class="relative bg-gray-50 dark:bg-gray-700 rounded-2xl p-3 mb-6 happy-bg shadow-inner" style="min-height: 350px;">
+                <!-- 四邊形顯示區 -->
+                <div id="shapeContainer" class="flex justify-center items-center h-[350px]">
+                    <div id="svgContainer" class="relative mx-auto" style="width:300px;height:300px;">
+                        <svg id="shapeSvg" width="300" height="300" class="absolute top-0 left-0"></svg>
+                        <!-- 點擊區域用div覆蓋 -->
+                        <div id="clickOverlay" class="absolute top-0 left-0 w-full h-full"></div>
+                    </div>
+                </div>
+                
+                <!-- 問題顯示 -->
+                <div id="questionDisplay" class="text-xl text-center font-bold py-3 text-primary dark:text-secondary hidden">
+                    <span class="inline-block mr-2">🤔</span>
+                    請點選線段 <span id="targetSegment" class="text-primary dark:text-happy px-2 py-1 bg-gray-100 dark:bg-gray-600 rounded-lg font-mono">AB</span>
+                </div>
+                
+                <!-- 倒數計時器 -->
+                <div id="timer" class="absolute top-3 right-3 w-12 h-12 bg-primary text-white font-bold text-xl hidden rounded-full flex items-center justify-center shadow-lg transform transition-transform duration-300">
+                    5
+                </div>
+                
+                <!-- 四邊形類型顯示 -->
+                <div id="shapeTypeDisplay" class="absolute top-3 left-3 bg-secondary dark:bg-secondary/80 rounded-full px-3 py-1 text-gray-700 font-medium">
+                    等待開始...
+                </div>
+                
+                <!-- 開始提示 -->
+                <div id="startPrompt" class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-xl text-center text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 p-6 rounded-xl shadow-lg">
+                        <div class="text-4xl mb-3">👇</div>
+                        點擊「開始遊戲」按鈕開始學習四邊形！
+                    </div>
+                </div>
+                
+                <!-- 反饋訊息 -->
+                <div id="feedback" class="absolute inset-x-0 bottom-4 mx-auto w-4/5 text-center p-4 rounded-xl hidden highlight-animation shadow-lg text-lg">
+                </div>
+            </div>
+            
+            <!-- 說明區 -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-5 rounded-xl text-sm text-gray-700 dark:text-gray-200 shadow-inner">
+                <p class="font-bold mb-3 flex items-center">
+                    <span class="text-xl mr-2">📝</span> 遊戲玩法：
+                </p>
+                <ul class="space-y-2 ml-2">
+                    <li class="flex items-start">
+                        <span class="inline-block mr-2 text-happy">🔶</span>
+                        <span>畫面會隨機顯示一種四邊形（正方形、長方形、平行四邊形、梯形或菱形）</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block mr-2 text-happy">🔶</span>
+                        <span>頂點會以<b>隨機</b>大寫英文字母標示（從26個字母中隨機抽取4個）</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block mr-2 text-happy">🔶</span>
+                        <span>你需要在5秒內找出並點擊題目要求的線段</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block mr-2 text-happy">🔶</span>
+                        <span>答對會得到1分，答錯沒有扣分</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('startBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const shapeSvg = document.getElementById('shapeSvg');
+            const clickOverlay = document.getElementById('clickOverlay');
+            const questionDisplay = document.getElementById('questionDisplay');
+            const targetSegment = document.getElementById('targetSegment');
+            const timer = document.getElementById('timer');
+            const feedback = document.getElementById('feedback');
+            const scoreDisplay = document.getElementById('score');
+            const startPrompt = document.getElementById('startPrompt');
+            const shapeTypeDisplay = document.getElementById('shapeTypeDisplay');
+            
+            let score = 0;
+            let currentShape = null;
+            let currentSegments = [];
+            let targetSegmentIndex = -1;
+            let countdownInterval = null;
+            let timeLeft = 5;
+            let gameActive = false;
+            
+            // 四邊形類型
+            const shapeTypes = [
+                { name: 'square', generator: generateSquare, nameZh: '正方形 □' },
+                { name: 'rectangle', generator: generateRectangle, nameZh: '長方形 ▭' },
+                { name: 'parallelogram', generator: generateParallelogram, nameZh: '平行四邊形 ▱' },
+                { name: 'trapezoid', generator: generateTrapezoid, nameZh: '梯形 ⏢' },
+                { name: 'rhombus', generator: generateRhombus, nameZh: '菱形 ◇' }
+            ];
+            
+            // 按鈕點擊效果
+            startBtn.addEventListener('mousedown', function() {
+                this.classList.add('button-press');
+            });
+            
+            startBtn.addEventListener('mouseup', function() {
+                this.classList.remove('button-press');
+            });
+            
+            nextBtn.addEventListener('mousedown', function() {
+                this.classList.add('button-press');
+            });
+            
+            nextBtn.addEventListener('mouseup', function() {
+                this.classList.remove('button-press');
+            });
+            
+            // 開始遊戲
+            startBtn.addEventListener('click', startGame);
+            nextBtn.addEventListener('click', nextQuestion);
+            
+            // 遊戲初始化
+            function startGame() {
+                console.log("遊戲開始");
+                score = 0;
+                scoreDisplay.textContent = score;
+                startBtn.innerHTML = '<span class="mr-2">🔄</span> 重新開始';
+                nextBtn.disabled = true;
+                startPrompt.classList.add('hidden');
+                playSound('start');
+                nextQuestion();
+            }
+            
+            // 模擬音效播放（由於環境限制，實際不發聲）
+            function playSound(type) {
+                console.log(`播放${type}音效`);
+                // 實際網頁中可以用以下方式播放音效
+                // const sound = new Audio(`sounds/${type}.mp3`);
+                // sound.play();
+            }
+            
+            // 生成4個隨機不重複的英文字母
+            function generateRandomLetters() {
+                const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                const selectedLetters = [];
+                const usedIndices = new Set();
+                
+                while (selectedLetters.length < 4) {
+                    const randomIndex = Math.floor(Math.random() * 26);
+                    if (!usedIndices.has(randomIndex)) {
+                        selectedLetters.push(letters[randomIndex]);
+                        usedIndices.add(randomIndex);
+                    }
+                }
+                
+                return selectedLetters;
+            }
+            
+            // 下一題
+            function nextQuestion() {
+                console.log("產生新題目");
+                clearInterval(countdownInterval);
+                feedback.classList.add('hidden');
+                
+                // 隨機選擇一種四邊形
+                const randomShapeType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+                currentShape = randomShapeType;
+                
+                // 更新四邊形類型顯示
+                shapeTypeDisplay.textContent = currentShape.nameZh;
+                
+                // 清空SVG和點擊區域
+                while (shapeSvg.firstChild) {
+                    shapeSvg.removeChild(shapeSvg.firstChild);
+                }
+                clickOverlay.innerHTML = '';
+                
+                // 生成隨機字母
+                const randomLetters = generateRandomLetters();
+                console.log("隨機生成的字母:", randomLetters.join(", "));
+                
+                // 生成四邊形
+                const vertices = currentShape.generator(randomLetters);
+                drawShape(vertices);
+                
+                // 隨機選擇一個線段作為目標
+                targetSegmentIndex = Math.floor(Math.random() * currentSegments.length);
+                const segment = currentSegments[targetSegmentIndex];
+                targetSegment.textContent = `${segment.startLabel}${segment.endLabel}`;
+                
+                // 顯示問題
+                questionDisplay.classList.remove('hidden');
+                
+                // 開始倒數計時
+                timeLeft = 5;
+                timer.textContent = timeLeft;
+                timer.classList.remove('hidden');
+                // 重置計時器顏色
+                timer.classList.remove('bg-error');
+                timer.classList.add('bg-primary');
+                gameActive = true;
+                
+                // 添加縮放動畫
+                timer.classList.add('highlight-animation');
+                
+                console.log("開始計時");
+                countdownInterval = setInterval(updateTimer, 1000);
+                nextBtn.disabled = true;
+                
+                // 啟用下一題按鈕
+                nextBtn.innerHTML = '<span class="mr-2">👉</span> 下一題';
+            }
+            
+            // 更新計時器
+            function updateTimer() {
+                timeLeft--;
+                timer.textContent = timeLeft;
+                
+                // 時間快到時改變顏色
+                if (timeLeft <= 2) {
+                    timer.classList.remove('bg-primary');
+                    timer.classList.add('bg-error');
+                }
+                
+                console.log("倒數計時：", timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    gameActive = false;
+                    
+                    // 顯示正確答案
+                    highlightSegment(currentSegments[targetSegmentIndex], 'red');
+                    showFeedback('❌ 時間到！正確答案已顯示。別擔心，下一題再加油吧！ 💪', 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100');
+                    
+                    nextBtn.disabled = false;
+                    playSound('timeout');
+                }
+            }
+            
+            // 生成各種四邊形的頂點座標
+            function generateSquare(letters = ['A', 'B', 'C', 'D']) {
+                const size = 120;
+                const center = { x: 150, y: 150 };
+                return [
+                    { x: center.x - size/2, y: center.y - size/2, label: letters[0] },
+                    { x: center.x + size/2, y: center.y - size/2, label: letters[1] },
+                    { x: center.x + size/2, y: center.y + size/2, label: letters[2] },
+                    { x: center.x - size/2, y: center.y + size/2, label: letters[3] }
+                ];
+            }
+            
+            function generateRectangle(letters = ['A', 'B', 'C', 'D']) {
+                const width = 160;
+                const height = 100;
+                const center = { x: 150, y: 150 };
+                return [
+                    { x: center.x - width/2, y: center.y - height/2, label: letters[0] },
+                    { x: center.x + width/2, y: center.y - height/2, label: letters[1] },
+                    { x: center.x + width/2, y: center.y + height/2, label: letters[2] },
+                    { x: center.x - width/2, y: center.y + height/2, label: letters[3] }
+                ];
+            }
+            
+            function generateParallelogram(letters = ['A', 'B', 'C', 'D']) {
+                const width = 160;
+                const height = 100;
+                const skew = 40;
+                const center = { x: 150, y: 150 };
+                return [
+                    { x: center.x - width/2 + skew, y: center.y - height/2, label: letters[0] },
+                    { x: center.x + width/2 + skew, y: center.y - height/2, label: letters[1] },
+                    { x: center.x + width/2 - skew, y: center.y + height/2, label: letters[2] },
+                    { x: center.x - width/2 - skew, y: center.y + height/2, label: letters[3] }
+                ];
+            }
+            
+            function generateTrapezoid(letters = ['A', 'B', 'C', 'D']) {
+                const topWidth = 100;
+                const bottomWidth = 180;
+                const height = 100;
+                const center = { x: 150, y: 150 };
+                return [
+                    { x: center.x - topWidth/2, y: center.y - height/2, label: letters[0] },
+                    { x: center.x + topWidth/2, y: center.y - height/2, label: letters[1] },
+                    { x: center.x + bottomWidth/2, y: center.y + height/2, label: letters[2] },
+                    { x: center.x - bottomWidth/2, y: center.y + height/2, label: letters[3] }
+                ];
+            }
+            
+            function generateRhombus(letters = ['A', 'B', 'C', 'D']) {
+                const width = 160;
+                const height = 120;
+                const center = { x: 150, y: 150 };
+                return [
+                    { x: center.x, y: center.y - height/2, label: letters[0] },
+                    { x: center.x + width/2, y: center.y, label: letters[1] },
+                    { x: center.x, y: center.y + height/2, label: letters[2] },
+                    { x: center.x - width/2, y: center.y, label: letters[3] }
+                ];
+            }
+            
+            // 繪製四邊形
+            function drawShape(vertices) {
+                // 繪製線段
+                currentSegments = [];
+                
+                for (let i = 0; i < vertices.length; i++) {
+                    const next = (i + 1) % vertices.length;
+                    
+                    // 創建線段（可見部分）
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', vertices[i].x);
+                    line.setAttribute('y1', vertices[i].y);
+                    line.setAttribute('x2', vertices[next].x);
+                    line.setAttribute('y2', vertices[next].y);
+                    line.setAttribute('stroke', '#7868E6'); // 使用主要顏色
+                    line.setAttribute('stroke-width', '3');
+                    line.id = `line-${i}`;
+                    
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        line.setAttribute('stroke', '#FFCF96'); // 暗模式顏色
+                    }
+                    
+                    shapeSvg.appendChild(line);
+                    
+                    // 儲存線段信息
+                    currentSegments.push({
+                        element: line,
+                        startLabel: vertices[i].label,
+                        endLabel: vertices[next].label,
+                        startVertex: vertices[i],
+                        endVertex: vertices[next]
+                    });
+                    
+                    // 為每個線段在覆蓋層上創建實際可點擊的元素（使用div而不是SVG元素）
+                    createClickableSegment(vertices[i], vertices[next], i);
+                }
+                
+                // 繪製頂點標籤
+                for (const vertex of vertices) {
+                    // 標籤背景圓
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', vertex.x);
+                    circle.setAttribute('cy', vertex.y);
+                    circle.setAttribute('r', '15');
+                    circle.setAttribute('fill', '#7868E6'); // 使用主要顏色
+                    
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        circle.setAttribute('fill', '#FFCF96'); // 暗模式顏色
+                    }
+                    
+                    shapeSvg.appendChild(circle);
+                    
+                    // 標籤文字
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', vertex.x);
+                    text.setAttribute('y', vertex.y);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'central');
+                    text.setAttribute('fill', 'white');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('font-size', '14');
+                    text.textContent = vertex.label;
+                    shapeSvg.appendChild(text);
+                }
+            }
+            
+            // 創建可點擊線段區域 (使用HTML元素而非SVG)
+            function createClickableSegment(start, end, index) {
+                // 計算線段角度
+                const angle = Math.atan2(end.y - start.y, end.x - start.x) * (180 / Math.PI);
+                // 計算線段長度
+                const length = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+                // 計算線段中點
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                
+                // 創建可點擊區域
+                const clickable = document.createElement('div');
+                clickable.style.position = 'absolute';
+                clickable.style.width = `${length}px`;
+                clickable.style.height = '20px'; // 較寬的點擊區域
+                clickable.style.backgroundColor = 'transparent';
+                clickable.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+                clickable.style.transformOrigin = 'center';
+                clickable.style.left = `${midX}px`;
+                clickable.style.top = `${midY}px`;
+                clickable.style.cursor = 'pointer';
+                clickable.dataset.index = index;
+                clickable.id = `clickable-${index}`;
+                
+                // 方便開發，邊緣標示，生產環境可移除
+                // clickable.style.border = '1px solid rgba(255, 0, 0, 0.3)';
+                
+                // 添加點擊事件
+                clickable.addEventListener('click', function() {
+                    console.log("線段被點擊，遊戲狀態:", gameActive, "選擇的線段:", index);
+                    if (gameActive) {
+                        const segmentIndex = parseInt(this.dataset.index);
+                        checkAnswer(segmentIndex);
+                    }
+                });
+                
+                clickOverlay.appendChild(clickable);
+            }
+            
+            // 檢查答案
+            function checkAnswer(selectedIndex) {
+                console.log("檢查答案: 選擇的是", selectedIndex, "目標是", targetSegmentIndex);
+                clearInterval(countdownInterval);
+                gameActive = false;
+                
+                if (selectedIndex === targetSegmentIndex) {
+                    // 答對了
+                    highlightSegment(currentSegments[selectedIndex], 'green');
+                    score++;
+                    scoreDisplay.textContent = score;
+                    
+                    const praises = [
+                        '✅ 太棒了！你答對了！ 🎉',
+                        '✅ 真厲害！回答正確！ 👍',
+                        '✅ 完全正確！做得很好！ 🌟',
+                        '✅ 你真聰明！答案正確！ 🏆',
+                        '✅ 真了不起！答對了！ 💯'
+                    ];
+                    const randomPraise = praises[Math.floor(Math.random() * praises.length)];
+                    showFeedback(randomPraise, 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100');
+                    playSound('correct');
+                } else {
+                    // 答錯了
+                    highlightSegment(currentSegments[selectedIndex], 'red');
+                    
+                    // 短暫延遲後顯示正確答案
+                    setTimeout(() => {
+                        highlightSegment(currentSegments[targetSegmentIndex], 'green');
+                    }, 500);
+                    
+                    const segment = currentSegments[targetSegmentIndex];
+                    const encouragements = [
+                        `❌ 不要氣餒！正確答案是線段${segment.startLabel}${segment.endLabel}，也就是從${segment.startLabel}點到${segment.endLabel}點的線段。 💪`,
+                        `❌ 差一點點！線段${segment.startLabel}${segment.endLabel}是從${segment.startLabel}點到${segment.endLabel}點的線段。 🤗`,
+                        `❌ 繼續努力！線段${segment.startLabel}${segment.endLabel}連接的是${segment.startLabel}點和${segment.endLabel}點。 📚`,
+                        `❌ 再試一次！線段${segment.startLabel}${segment.endLabel}表示的是從頂點${segment.startLabel}到頂點${segment.endLabel}的邊。 🌈`
+                    ];
+                    const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+                    showFeedback(randomEncouragement, 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100');
+                    playSound('incorrect');
+                }
+                
+                // 特殊效果：分數增加時的動畫
+                if (selectedIndex === targetSegmentIndex) {
+                    scoreDisplay.classList.add('highlight-animation');
+                    setTimeout(() => {
+                        scoreDisplay.classList.remove('highlight-animation');
+                    }, 1000);
+                }
+                
+                timer.classList.add('hidden');
+                nextBtn.disabled = false;
+            }
+            
+            // 標示線段
+            function highlightSegment(segment, color) {
+                console.log("高亮顯示線段:", segment.startLabel + segment.endLabel, "顏色:", color);
+                
+                // 直接設置SVG屬性
+                if (color === 'green') {
+                    segment.element.setAttribute('stroke', '#5CB85C'); // 綠色
+                    segment.element.setAttribute('stroke-width', '5');
+                } else if (color === 'red') {
+                    segment.element.setAttribute('stroke', '#FF7D7D'); // 紅色
+                    segment.element.setAttribute('stroke-width', '5');
+                }
+                
+                // 添加閃爍動畫
+                segment.element.classList.add('highlight-animation');
+            }
+            
+            // 顯示反饋信息
+            function showFeedback(message, colorClass) {
+                console.log("顯示反饋:", message);
+                feedback.textContent = message;
+                feedback.className = 'absolute inset-x-0 bottom-4 mx-auto w-4/5 text-center p-4 rounded-xl highlight-animation shadow-lg text-lg ' + colorClass;
+                feedback.classList.remove('hidden');
+                
+                // 強制重繪
+                setTimeout(() => {
+                    feedback.classList.add('highlight-animation');
+                }, 10);
+            }
+        });
+    </script>
+</body>
+</html>
